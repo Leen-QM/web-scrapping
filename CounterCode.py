@@ -1,4 +1,5 @@
 import re  # Import regular expressions
+import csv  # For writing to CSV
 from mapping import is_it_a_nationality
 from gliner import GLiNER
 import time
@@ -10,11 +11,14 @@ filename = 'countries_and_demonyms.csv'
 start_time = time.time()
 
 # URL of the page to scrape
-url = 'https://www.encyclopedia.mathaf.org.qa/en/bios/Pages/Cesar-Gemayel.aspx'
+url = 'https://encyclopedia.mathaf.org.qa/en/bios/Pages/Ragheb-Ayad.aspx'
 response = requests.get(url)
 
 # Parse the webpage content
 soup = BeautifulSoup(response.text, 'html.parser')
+
+# Extract the name for the CSV filename from the URL
+csv_name = url.split('/')[-1].replace('.aspx', '') + '.csv'
 
 # Find the Biography and Exhibitions headers
 biography_h1 = soup.find('h1', string=lambda text: text and 'biography' in text.lower())
@@ -84,35 +88,19 @@ for entity in all_entities_set:
     count = sum(chunk.count(entity) for chunk in biography_content)
     entity_counts[entity] = count
 
-# Print the results as a table
-print(f"{'Entity':<30}{'Occurrences':<15}")
-print("-" * 45)
-for entity, count in entity_counts.items():
-    print(f"{entity:<30}{count:<15}")
+# Sort entities alphabetically
+sorted_entity_counts = sorted(entity_counts.items(), key=lambda x: x[0])
+
+# Write the results to a CSV file
+with open(csv_name, mode='w', newline='', encoding='utf-8') as csv_file:
+    writer = csv.writer(csv_file)
+    writer.writerow(['Entity', 'Occurrences'])  # Write header
+    writer.writerows(sorted_entity_counts)  # Write sorted entities and counts
+
+# Print a success message
+print(f"\nEntities and their occurrences have been saved to {csv_name}")
 
 # Execution time
 end_time = time.time()
 execution_time = end_time - start_time
 print(f"\nExecution time: {execution_time} seconds")
-
-sorted_human_names = sorted(human_names)  # Alphabetical
-sorted_countries = sorted(countries)  # Alphabetical
-sorted_dates = sorted(dates, key=int)  # Numerical order (years only)
-sorted_places = sorted(places)  # Alphabetical
-sorted_cities = sorted(cities)  # Alphabetical
-
-# Display categorized entities
-print("\nHuman Names (Alphabetical):")
-print(sorted_human_names)
-
-print("\nCountries (Alphabetical, Demonyms Removed):")
-print(sorted_countries)
-
-print("\nDates (Years Only, Increasing Order):")
-print(sorted_dates)
-
-print("\nPlaces (Alphabetical):")
-print(sorted_places)
-
-print("\nCities (Alphabetical):")
-print(sorted_cities)
