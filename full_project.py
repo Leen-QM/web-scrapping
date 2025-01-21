@@ -103,7 +103,7 @@ while urls_to_visit:
 
       # If the URL contains '/bios/Pages', add it to the bio_urls list
     if '/bios/Pages' in current_url:
-        if 'init=' in current_url:
+        if 'init=' in current_url or 'default' in current_url:
             continue  # Skip URLs containing 'init='
         bio_urls.append(current_url)
 
