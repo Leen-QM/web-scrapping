@@ -10,7 +10,7 @@ filename = 'countries_and_demonyms.csv'
 start_time = time.time()
 
 # URL of the page to scrape
-url = 'https://www.encyclopedia.mathaf.org.qa/en/bios/Pages/Dia-Azzawi.aspx'
+url = 'https://www.encyclopedia.mathaf.org.qa/en/bios/Pages/Cesar-Gemayel.aspx'
 response = requests.get(url)
 
 # Parse the webpage content
@@ -66,7 +66,7 @@ for entity in all_entities:
         country = is_it_a_nationality(filename, text) or text
         countries.add(country)
     elif label == "Date":
-        match = re.search(r'\b(18|19|20)\d{2}\b', text)
+        match = re.search(r'\b\d{4}\b', text)
         if match:
             dates.add(match.group(0))
     elif label == "Place":
@@ -94,3 +94,25 @@ for entity, count in entity_counts.items():
 end_time = time.time()
 execution_time = end_time - start_time
 print(f"\nExecution time: {execution_time} seconds")
+
+sorted_human_names = sorted(human_names)  # Alphabetical
+sorted_countries = sorted(countries)  # Alphabetical
+sorted_dates = sorted(dates, key=int)  # Numerical order (years only)
+sorted_places = sorted(places)  # Alphabetical
+sorted_cities = sorted(cities)  # Alphabetical
+
+# Display categorized entities
+print("\nHuman Names (Alphabetical):")
+print(sorted_human_names)
+
+print("\nCountries (Alphabetical, Demonyms Removed):")
+print(sorted_countries)
+
+print("\nDates (Years Only, Increasing Order):")
+print(sorted_dates)
+
+print("\nPlaces (Alphabetical):")
+print(sorted_places)
+
+print("\nCities (Alphabetical):")
+print(sorted_cities)
