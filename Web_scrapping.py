@@ -11,7 +11,7 @@ from urllib.parse import urljoin
 import os  # Import os for folder creation
 from PIL import Image  # Import the Image module from PIL (Python Imaging Library)
 
-
+filename = 'countries_and_demonyms.csv'
 start_time = time.time()
 
 # GLiNER with the base model
