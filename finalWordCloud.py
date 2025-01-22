@@ -2,13 +2,14 @@ import csv
 from wordcloud import WordCloud
 import matplotlib.pyplot as plt
 
-def generate_word_cloud(csv_file, save_path=None):
+def generate_word_cloud(csv_file,title, save_path=None):
     """
     Generate a word cloud from a CSV file of entities and their frequencies, and save it to a file.
 
     Args:
         csv_file (str): The path to the CSV file containing link, entities, and their counts.
         save_path (str, optional): The path to save the word cloud image. If None, the word cloud will not be saved.
+        title (str, optional): The title to add to the word cloud image. Default is "Word Cloud of Entities".
 
     Returns:
         None: The function saves the word cloud to the specified file path if provided.
@@ -21,12 +22,12 @@ def generate_word_cloud(csv_file, save_path=None):
             next(reader)  # Skip the header row
             for row in reader:
                 # Ensure row has at least 3 columns (Link, Entity, Occurrences)
-                if len(row) < 3:
+                if len(row) < 4:
                     print(f"Skipping invalid row: {row}")
                     continue
                 try:
                     entity = row[1].strip()  # The entity name is in the second column
-                    frequency = int(row[2])  # The frequency count is in the third column
+                    frequency = int(row[3])  # The frequency count is in the third column
                     word_freq[entity] = frequency
                 except ValueError:
                     print(f"Skipping invalid frequency value in row: {row}")
@@ -40,17 +41,25 @@ def generate_word_cloud(csv_file, save_path=None):
         # Generate the word cloud
         wordcloud = WordCloud(width=800, height=400, background_color='white').generate_from_frequencies(word_freq)
 
+        # If saving the word cloud as a PNG file
         if save_path:
-            # Save the word cloud image to the specified path
-            wordcloud.to_file(save_path)
-            print(f"Word cloud saved to {save_path}.")
-            return wordcloud
-        else:
-            # Display the word cloud
+            # Create the figure for displaying
             plt.figure(figsize=(10, 5))
             plt.imshow(wordcloud, interpolation='bilinear')
             plt.axis('off')  # Turn off axes
-            plt.title("Word Cloud of Entities", fontsize=16)
+            plt.title(title, fontsize=16)  # Set the title of the plot
+
+            # Save the word cloud image to the specified path
+            plt.savefig(save_path, format='png')
+            plt.close()  # Close the plot to avoid displaying it after saving
+            print(f"Word cloud saved to {save_path}.")
+            return wordcloud
+        else:
+            # Display the word cloud with a title
+            plt.figure(figsize=(10, 5))
+            plt.imshow(wordcloud, interpolation='bilinear')
+            plt.axis('off')  # Turn off axes
+            plt.title(title, fontsize=16)  # Set the title
             plt.show()
             return wordcloud
 
