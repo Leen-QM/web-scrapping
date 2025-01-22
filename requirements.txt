@@ -1,0 +1,9 @@
+re
+csv
+torch
+gliner
+requests
+beautifulsoup4
+wordcloud
+matplotlib
+pillow
