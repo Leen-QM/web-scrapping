@@ -49,6 +49,7 @@ def extract_entities(biography_content):
         if label == "Person" and text_lower not in pronoun_list:
             human_names.add(text)
         elif label == "Country":
+            country = is_it_a_nationality(filename, text) or text
             countries.add(text)
         elif label == "Date":
             # Extract year if present in full date
