@@ -14,10 +14,10 @@ from PIL import Image  # Import the Image module from PIL (Python Imaging Librar
 
 start_time = time.time()
 
-# Initialize GLiNER with the base model
+# GLiNER with the base model
 model = GLiNER.from_pretrained("urchade/gliner_multi-v2.1")
 
-# Define labels for entity prediction
+# entity prediction labels
 labels = ["Person", "Country", "Date", "Place", "City"]
 
 # Predefined list of common pronouns (case-insensitive)
@@ -34,7 +34,6 @@ def extract_entities(biography_content):
         entities = model.predict_entities(chunk, labels, threshold=0.5)
         all_entities.extend(entities)
 
-    # Categorize entities into separate groups for better distinction
     human_names = set()
     countries = set()
     dates = set()
@@ -44,8 +43,6 @@ def extract_entities(biography_content):
     for entity in all_entities:
         label = entity["label"]
         text = entity["text"].strip()
-
-        # Normalize text to lowercase for comparison
         text_lower = text.lower()
 
         # Add to appropriate category, filtering out pronouns from human names
@@ -76,7 +73,7 @@ def extract_entities(biography_content):
 def crawl_page(url):
     try:
         response = requests.get(url)
-        response.raise_for_status()  # Raise an exception for HTTP errors
+        response.raise_for_status()
 
         soup = BeautifulSoup(response.content, "html.parser")
 
@@ -93,15 +90,14 @@ def crawl_page(url):
         print(f"Error crawling {url}: {e}")
         return []
 
-# Base URL of the website to crawl
 base_url = "https://encyclopedia.mathaf.org.qa/"
-visited_urls = set()  # Set to store visited URLs
-urls_to_visit = [base_url]  # List to store URLs to visit next
-bio_urls = []  # List to store URLs with '/bios/Pages' in their path
+visited_urls = set()  
+urls_to_visit = [base_url]  
+bio_urls = []
 
 # Crawl the website and collect bio URLs
 while urls_to_visit:
-    current_url = urls_to_visit.pop(0)  # Dequeue the first URL
+    current_url = urls_to_visit.pop(0)
 
     if current_url in visited_urls:
         continue
@@ -120,7 +116,7 @@ while urls_to_visit:
 
 print(f"Crawling finished. Found {len(bio_urls)} bio pages.")
 
-# Now scrape each bio page, extract entities, and generate word clouds
+# scrape each bio page, extract entities, and generate word clouds
 for bio_url in bio_urls:
     print(f"Scraping bio page: {bio_url}")
     response = requests.get(bio_url)
@@ -132,20 +128,16 @@ for bio_url in bio_urls:
 
     biography_content = []
 
-    # Check if both headers are found
     if biography_h1 and exhibitions_h1:
         # Find the content between 'Biography' and 'Exhibitions'
         for sibling in biography_h1.find_next_siblings():
-            # Stop when the Exhibitions header is encountered
             if sibling == exhibitions_h1:
                 break
             if sibling.name == 'p':  # Only collect <p> tags
                 biography_content.append(sibling.get_text(strip=True))
 
-    # Extract named entities from biography content
     human_names, countries, dates, places, cities = extract_entities(biography_content)
 
-    # Count occurrences of each entity in the final sets
     entity_counts = Counter()
 
     # Convert the lists to sets before using the union method
@@ -178,14 +170,11 @@ for bio_url in bio_urls:
 
     word_cloud_image = generate_word_cloud(csv_name, os.path.join(folder_name, bio_url.split('/')[-1].replace('.aspx', '') + '_wordcloud.png'))
  
-    # Generate word cloud without the 'save_path' argument
-
     if word_cloud_image:
         print(f"Word cloud has been saved.")
     else:
         print(f"Failed to generate word cloud for {bio_url}. The result is None.")
 
-# Execution time
 end_time = time.time()
 execution_time = end_time - start_time
 print(f"\nExecution time: {execution_time} seconds")
