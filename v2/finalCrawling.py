@@ -1,11 +1,11 @@
 import requests
-import requests_cache  # Import requests-cache
+#import requests_cache 
 from bs4 import BeautifulSoup;
 from urllib.parse import urljoin
 
 
 # Initialize requests-cache with a cache file
-requests_cache.install_cache('web_cache', expire_after=604800)  # Cache expires after 1 week
+#requests_cache.install_cache('web_cache', expire_after=604800)  # Cache expires after 1 week
 
 # Function to crawl a page and extract links (now using cached requests)
 def crawl_page(url):
@@ -27,4 +27,3 @@ def crawl_page(url):
     except requests.exceptions.RequestException as e:
         print(f"Error crawling {url}: {e}")
         return []
-
