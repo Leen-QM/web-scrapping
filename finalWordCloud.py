@@ -17,7 +17,7 @@ def generate_word_cloud(csv_file,title, save_path=None):
     try:
         # Read the CSV file and create a dictionary of words and their frequencies
         word_freq = {}
-        with open(csv_file, mode='r', encoding='utf-8') as file:
+        with open(csv_file, mode='r', encoding='iso-8859-2') as file:
             reader = csv.reader(file)
             next(reader)  # Skip the header row
             for row in reader:
@@ -39,15 +39,15 @@ def generate_word_cloud(csv_file,title, save_path=None):
             return None
 
         # Generate the word cloud
-        wordcloud = WordCloud(width=800, height=400, background_color='white').generate_from_frequencies(word_freq)
+        wordcloud = WordCloud(width=900, height=400, background_color='white').generate_from_frequencies(word_freq)
 
         # If saving the word cloud as a PNG file
-        if save_path:
+        if save_path: 
             # Create the figure for displaying
             plt.figure(figsize=(10, 5))
             plt.imshow(wordcloud, interpolation='bilinear')
             plt.axis('off')  # Turn off axes
-            plt.title(title, fontsize=16)  # Set the title of the plot
+            plt.title(title, fontsize=10, loc='left',pad = 15)  # Set the title of the plot
 
             # Save the word cloud image to the specified path
             plt.savefig(save_path, format='png')
@@ -59,7 +59,7 @@ def generate_word_cloud(csv_file,title, save_path=None):
             plt.figure(figsize=(10, 5))
             plt.imshow(wordcloud, interpolation='bilinear')
             plt.axis('off')  # Turn off axes
-            plt.title(title, fontsize=16)  # Set the title
+            plt.title(title, fontsize=10, loc='left', pad = 15)  # Set the title
             plt.show()
             return wordcloud
 
