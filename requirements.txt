@@ -8,3 +8,4 @@ wordcloud
 matplotlib
 pillow
 requests-cache
+boilerpy3
