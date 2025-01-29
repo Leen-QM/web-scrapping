@@ -4,16 +4,17 @@ from finalMapping import is_it_a_nationality
 from finalWordCloud import generate_word_cloud
 import re
 import csv
+from collections import Counter
 import os
 
 # Initialize GLiNER with the base model
-model = GLiNER.from_pretrained("urchade/gliner_small-v2.1")
+model = GLiNER.from_pretrained("urchade/gliner_multi-v2.1")
 
 # Predefined list of common pronouns (case-insensitive)
 pronoun_list = {"he", "she", "him", "her", "it", "they", "them", "we", "us", "i", "me", "you", "his", "their", "our"}
 
 # Define labels for entity prediction
-labels = ["Human", "Country", "Date", "Era", "Person"]
+labels = ["Human", "Country", "Date", "Era", "City"]
 
 # Function to split content into word-safe chunks
 def split_into_chunks(content, chunk_size=500):
@@ -38,6 +39,7 @@ def fetch_main_content_advanced(url, start_phrase, end_phrase):
     response = requests.get(url)
     if response.status_code == 200:
         content = response.text
+        print(content)
         # Find content between the specified phrases
         start_index = content.find(start_phrase)
         end_index = content.find(end_phrase, start_index)
@@ -50,55 +52,73 @@ def fetch_main_content_advanced(url, start_phrase, end_phrase):
     else:
         raise Exception(f"Failed to fetch {url}, status code: {response.status_code}")
 
-# Function to extract entities and display all related labels with thresholds
-def extract_entities_with_thresholds(biography_content):
-    """
-    Extract entities from the content and display all related labels with confidence thresholds.
-    """
-    entity_to_labels_with_thresholds = {}  # Dictionary to map entities to their labels and thresholds
-
+# Function to extract entities from biography content
+def extract_entities(biography_content):
+    all_entities = []
     for chunk in biography_content:
-        entities = model.predict_entities(chunk, labels, threshold=0.0)  # Set threshold to 0 to get all predictions
+        entities = model.predict_entities(chunk, labels, threshold=0.5)
+        all_entities.extend(entities)
 
-        for entity in entities:
-            label = entity["label"]
-            text = entity["text"].strip()
-            score = entity["score"]  # Confidence score for the prediction
+    human_names = set()
+    countries = set()
+    dates = set()
+    places = set()
+    cities = set()
 
-            # Add or update the entity in the dictionary
-            if text in entity_to_labels_with_thresholds:
-                entity_to_labels_with_thresholds[text].append((label, score))
-            else:
-                entity_to_labels_with_thresholds[text] = [(label, score)]
+    for entity in all_entities:
+        label = entity["label"]
+        text = entity["text"].strip()
+        text_lower = text.lower()
 
-    # Print extracted entities with related labels and thresholds
-    print("\nExtracted Entities with All Related Labels and Confidence Thresholds:")
-    for entity, label_thresholds in entity_to_labels_with_thresholds.items():
-        label_thresholds_str = ", ".join([f"{label} ({threshold:.2f})" for label, threshold in label_thresholds])
-        print(f"{entity}: {label_thresholds_str}")
+        if label == "Human" and text[0].isupper() and text.lower() not in pronoun_list:
+            human_names.add((text, label))
+        elif label == "Country":
+            country = is_it_a_nationality('countries_and_demonyms.csv', text) or text
+            countries.add((country, label))
+        elif label == "Date":
+            match = re.search(r'\b(18|19|20)\d{2}\b', text)
+            if match:
+                dates.add((match.group(0), label))
+        elif label == "Era":
+            places.add((text, label))
+        elif label == "City":
+            cities.add((text, label))
 
-    return entity_to_labels_with_thresholds
+    sorted_human_names = sorted(human_names, key=lambda x: x[0])
+    sorted_countries = sorted(countries, key=lambda x: x[0])
+    sorted_dates = sorted(dates, key=lambda x: int(x[0]))
+    sorted_places = sorted(places, key=lambda x: x[0])
+    sorted_cities = sorted(cities, key=lambda x: x[0])
+
+    return sorted_human_names, sorted_countries, sorted_dates, sorted_places, sorted_cities
 
 # Function to process content and save results
 def process_bio_page(bio_url, biography_content, folder_name="Mathaf Encyclopedia"):
     os.makedirs(folder_name, exist_ok=True)
+    human_names, countries, dates, places, cities = extract_entities(biography_content)
 
-    # Extract entities with labels and thresholds
-    entities_with_labels_and_thresholds = extract_entities_with_thresholds(biography_content)
+    entity_label_counts = Counter()
+    all_entities_set = set(human_names).union(set(countries), set(dates), set(places), set(cities))
 
-    # Save results to CSV
+    for entity_tuple in all_entities_set:
+        entity = entity_tuple[0]
+        count = sum(chunk.count(entity) for chunk in biography_content)
+        label = entity_tuple[1]
+        entity_label_counts[(entity, label)] = count
+
+    sorted_entity_counts = sorted(entity_label_counts.items(), key=lambda x: x[0])
+
     csv_name = os.path.join(folder_name, bio_url.split('/')[-1].replace('.aspx', '') + '.csv')
+
     with open(csv_name, mode='w', newline='', encoding='utf-8-sig') as csv_file:
         writer = csv.writer(csv_file)
-        writer.writerow(['Entity', 'Related Labels and Thresholds'])  # Header row
-        for entity, label_thresholds in entities_with_labels_and_thresholds.items():
-            label_thresholds_str = ", ".join([f"{label} ({threshold:.2f})" for label, threshold in label_thresholds])
-            writer.writerow([entity, label_thresholds_str])
+        writer.writerow(['Link', 'Entity', 'Label', 'Occurrences'])
+        for (entity, label), count in sorted_entity_counts:
+            writer.writerow([bio_url, entity, label, count])
 
     print(f"Entities saved to {csv_name}")
 
-    # Generate word cloud
-    word_cloud_image = generate_word_cloud(csv_name, bio_url, os.path.join(folder_name, bio_url.split('/')[-1].replace('.aspx', '') + '_wordcloud.png'))
+    word_cloud_image = generate_word_cloud(csv_name, [bio_url], os.path.join(folder_name, bio_url.split('/')[-1].replace('.aspx', '') + '_wordcloud.png'))
     if word_cloud_image:
         print("Word cloud has been saved.")
     else:
