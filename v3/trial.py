@@ -1,6 +1,7 @@
 import requests
 from gliner import GLiNER
 from finalMapping import is_it_a_nationality
+from finalMapping import is_arabic_country
 from finalWordCloud import generate_word_cloud
 import re
 import csv
@@ -14,7 +15,8 @@ model = GLiNER.from_pretrained("urchade/gliner_multi-v2.1")
 pronoun_list = {"he", "she", "him", "her", "it", "they", "them", "we", "us", "i", "me", "you", "his", "their", "our"}
 
 # Define labels for entity prediction
-labels = ["Human", "Country", "Date", "Era", "City"]
+labels = ["Person", "Country", "Date", "Place", "City"]
+labels2= ["اسم", "دولة", "تاريخ", "مكان", "مدينة"]
 
 # Function to split content into word-safe chunks
 def split_into_chunks(content, chunk_size=500):
@@ -52,13 +54,33 @@ def fetch_main_content_advanced(url, start_phrase, end_phrase):
     else:
         raise Exception(f"Failed to fetch {url}, status code: {response.status_code}")
 
-# Function to extract entities from biography content
-def extract_entities(biography_content):
+def extract_entities(biography_content, bio_url):
+    """
+    Extract entities from the content based on the language specified in the URL.
+    """
     all_entities = []
+    print(bio_url)
+
+    # Determine language and set appropriate labels
+    if "/en/" in bio_url.lower():
+        print("Language: English")
+        language = "English"
+        current_labels = labels
+        threshold = 0.5
+    elif "/ar/" in bio_url.lower():
+        print("Language: Arabic")
+        language = "Arabic"
+        current_labels = labels2
+        threshold = 0.6
+
+    else:
+        raise ValueError("Language not recognized. URL must contain '/en/' or '/ar/'.")
+
     for chunk in biography_content:
-        entities = model.predict_entities(chunk, labels, threshold=0.5)
+        entities = model.predict_entities(chunk, current_labels, threshold)
         all_entities.extend(entities)
 
+    arabic_pattern = re.compile(r'[\u0600-\u06FF]')
     human_names = set()
     countries = set()
     dates = set()
@@ -68,34 +90,54 @@ def extract_entities(biography_content):
     for entity in all_entities:
         label = entity["label"]
         text = entity["text"].strip()
-        text_lower = text.lower()
+        if language == "English":
+            # Process entities for English
+            if label == "Person" and text[0].isupper() and text.lower() not in pronoun_list:
+                human_names.add((text, label))
+            elif label == "Country":
+                country = is_it_a_nationality('countries_and_demonyms.csv', text) or text
+                countries.add((country, label))
+            elif label == "Date":
+                match = re.search(r'\b(18|19|20)\d{2}\b', text)
+                if match:
+                    dates.add((match.group(0), label))
+            elif label == "Place":
+                places.add((text, label))
+            elif label == "City":
+                cities.add((text, label))
 
-        if label == "Human" and text[0].isupper() and text.lower() not in pronoun_list:
-            human_names.add((text, label))
-        elif label == "Country":
-            country = is_it_a_nationality('countries_and_demonyms.csv', text) or text
-            countries.add((country, label))
-        elif label == "Date":
-            match = re.search(r'\b(18|19|20)\d{2}\b', text)
-            if match:
-                dates.add((match.group(0), label))
-        elif label == "Era":
-            places.add((text, label))
-        elif label == "City":
-            cities.add((text, label))
+        elif language == "Arabic":
+            if label in ["اسم", "دولة", "مكان", "مدينة"] and not arabic_pattern.search(text):
+                continue
+            # Process entities for Arabic
+            if label == "اسم":
+                human_names.add((text, label))
+            elif label == "دولة":
+                countries.add((text, label))
+            elif label == "تاريخ":
+                match = re.search(r'\b(18|19|20)\d{2}\b', text)
+                if match:
+                    dates.add((match.group(0), label))
+            elif label == "مكان":
+                places.add((text, label))
+            elif label == "مدينة":
+                if not is_arabic_country('countries_and_demonyms.csv', text):
+                    cities.add((text, label))
 
+    print(f"Processing chunk with labels: {current_labels} and threshold: {threshold}")
     sorted_human_names = sorted(human_names, key=lambda x: x[0])
     sorted_countries = sorted(countries, key=lambda x: x[0])
-    sorted_dates = sorted(dates, key=lambda x: int(x[0]))
+    sorted_dates = sorted(dates, key=lambda x: int(x[0]) if x[0].isdigit() else x[0])
     sorted_places = sorted(places, key=lambda x: x[0])
     sorted_cities = sorted(cities, key=lambda x: x[0])
 
     return sorted_human_names, sorted_countries, sorted_dates, sorted_places, sorted_cities
 
+
 # Function to process content and save results
 def process_bio_page(bio_url, biography_content, folder_name="Mathaf Encyclopedia"):
     os.makedirs(folder_name, exist_ok=True)
-    human_names, countries, dates, places, cities = extract_entities(biography_content)
+    human_names, countries, dates, places, cities = extract_entities(biography_content, bio_url)
 
     entity_label_counts = Counter()
     all_entities_set = set(human_names).union(set(countries), set(dates), set(places), set(cities))
