@@ -9,3 +9,5 @@ matplotlib
 pillow
 requests-cache
 boilerpy3
+arabic-reshaper 
+python-bidi
